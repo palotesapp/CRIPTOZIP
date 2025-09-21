@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Cifrar ZIP y enviar por correo</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+</head>
+<body>
+  <h2>🔐 Cifrar ZIP y preparar correo</h2>
+  <input type="file" id="fileInput" accept=".zip"><br><br>
+  <button onclick="encryptFile()">Cifrar y preparar correo</button>
+
+  <script>
+    function encryptFile() {
+      const fileInput = document.getElementById("fileInput");
+      if (!fileInput.files.length) {
+        alert("Selecciona primero un archivo ZIP");
+        return;
+      }
+
+      const file = fileInput.files[0];
+      const reader = new FileReader();
+
+      reader.onload = function(e) {
+        const wordArray = CryptoJS.lib.WordArray.create(e.target.result);
+        const encrypted = CryptoJS.AES.encrypt(wordArray, "palote789133").toString();
+
+        // Crear el archivo cifrado (texto en base64)
+        const blob = new Blob([encrypted], {type: "text/plain;charset=utf-8"});
+        const encFileName = file.name + ".enc";
+
+        // Descargar el archivo cifrado
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = encFileName;
+        link.click();
+
+        // Preparar el mailto (sin adjunto automático, solo texto)
+        const subject = "Archivo ZIP cifrado: " + encFileName;
+        const body = 
+`Adjunta el archivo descargado (${encFileName}) a este correo.
+Contraseña para abrirlo: palote789133.`;
+
+        const mailtoLink = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+        window.location.href = mailtoLink;
+      };
+
+      reader.readAsArrayBuffer(file);
+    }
+  </script>
+</body>
+</html>
