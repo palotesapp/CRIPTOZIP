@@ -672,6 +672,29 @@ function setSelectWithInput(selectName, excelValue) {
     }
   }
 
+	// Función para generar ODT a partir de plantilla y datos
+// PLANTILLA: base64 string o Uint8Array con el contenido ODT
+// data: objeto con claves y valores para reemplazar {{CLAVE}} en plantilla
+async function generarODTUint8(plantillaBase64, data) {
+  // Decodificar base64 a texto
+  const plantillaStr = atob(plantillaBase64);
+
+  // Reemplazar variables {{CLAVE}} por valores en mayúsculas
+  let contenido = plantillaStr;
+  for (const key in data) {
+    if (!data.hasOwnProperty(key)) continue;
+    const regex = new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, 'gi');
+    contenido = contenido.replace(regex, data[key]);
+  }
+
+  // Codificar texto modificado a Uint8Array para guardar
+  const buf = new Uint8Array(contenido.length);
+  for (let i = 0; i < contenido.length; i++) {
+    buf[i] = contenido.charCodeAt(i);
+  }
+  return buf;
+}
+
 	// DESCARGAR ZIP
 async function descargarZip() {
   const msg = document.getElementById("message");
@@ -906,6 +929,7 @@ async function descargarZip() {
 
 </body>
 </html>
+
 
 
 
