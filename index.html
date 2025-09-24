@@ -682,7 +682,7 @@
   });
 
 // --- NUEVO: descargar ZIP con carpeta (XLSX + ODTs) ---
-// Versión robusta: resuelve claves aunque varíen nombres (mayús/acentos/prefijos) y admite data URLs.
+// --- Generar ZIP con XLSX + ODTs ---
 async function generarZIP() {
   const msg = document.getElementById("message");
   msg.innerText = "Generando ZIP...";
@@ -780,43 +780,13 @@ async function generarZIP() {
     const dir = zip.folder(folderName);
     dir.file(xlsxName, wbout); // XLSX añadido
 
-    // ====== Selección de ODTs (robusta) ======
-    const PL = (window.PLANTILLAS || {});
-    const plKeys = Object.keys(PL);
-
-    // Helpers de resolución de claves (tolerante a mayús/acentos/espacios/guiones/prefijos)
-    const norm = s => String(s||"")
-      .normalize("NFD").replace(/[\u0300-\u036f]/g,"") // quita acentos
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g,""); // compacta
-
-    const indexByNorm = {};
-    plKeys.forEach(k => indexByNorm[norm(k)] = k);
-
-    function resolveKey(possiblePatterns) {
-      // possiblePatterns: array de strings o regex source ya "normalizados"
-      const normalizedKeys = Object.keys(indexByNorm);
-      for (const pattern of possiblePatterns) {
-        const pat = norm(pattern);
-        // 1) coincidencia exacta normalizada
-        if (indexByNorm[pat]) return indexByNorm[pat];
-        // 2) coincidencia por "incluye" (por si hay prefijos tipo plantilla_...)
-        const hit = normalizedKeys.find(nk => nk.includes(pat));
-        if (hit) return indexByNorm[hit];
-      }
-      return null;
-    }
-
-    // Limpia data URL si viene con prefijo
-    const asPureBase64 = s => String(s||"").replace(/^data:.*?;base64,/, "");
-
-    // Reglas: siempre Fax y Derechos_ES
-    const faxKey = resolveKey(["fax","plantilla_fax"]);
-    const derEsKey = resolveKey(["derechos_espanol","derechos_español","derechos_es","espanol","español"]);
+    // ====== Selección de ODTs ======
+    const PL = window.PLANTILLAS || {};
     const filesToInclude = [];
 
-    if (faxKey && PL[faxKey]) filesToInclude.push(["Plantilla_Fax.odt", faxKey]);
-    if (derEsKey && PL[derEsKey]) filesToInclude.push(["Derechos_ES.odt", derEsKey]);
+    // Siempre Fax y Derechos Español
+    if (PL.fax) filesToInclude.push(["Plantilla_Fax.odt", "fax"]);
+    if (PL.derechos_espanol) filesToInclude.push(["Derechos_ES.odt", "derechos_espanol"]);
 
     // Edad → Azules (<18) o Amarillas (≥18)
     let edadNum = null;
@@ -824,8 +794,8 @@ async function generarZIP() {
       const partes = String(data["FECHA DE NACIMIENTO"]).split(/[\/\-]/);
       if (partes.length >= 3) {
         let d, m, y;
-        if (partes[0].length === 4) { y = +partes[0]; m = +partes[1]; d = +partes[2]; } // yyyy-mm-dd
-        else { d = +partes[0]; m = +partes[1]; y = +partes[2]; } // dd/mm/yyyy
+        if (partes[0].length === 4) { y = +partes[0]; m = +partes[1]; d = +partes[2]; }
+        else { d = +partes[0]; m = +partes[1]; y = +partes[2]; }
         if (y && m && d) {
           const birth = new Date(y, m-1, d);
           const today = new Date();
@@ -836,39 +806,36 @@ async function generarZIP() {
       }
     }
     if (edadNum !== null) {
-      if (edadNum < 18) {
-        const azKey = resolveKey(["azules","plantilla_azules"]);
-        if (azKey && PL[azKey]) filesToInclude.push(["Plantilla_Azules.odt", azKey]);
-      } else {
-        const amKey = resolveKey(["amarillas","plantilla_amarillas"]);
-        if (amKey && PL[amKey]) filesToInclude.push(["Plantilla_Amarillas.odt", amKey]);
+      if (edadNum < 18 && PL.azules) {
+        filesToInclude.push(["Plantilla_Azules.odt", "azules"]);
+      } else if (edadNum >= 18 && PL.amarillas) {
+        filesToInclude.push(["Plantilla_Amarillas.odt", "amarillas"]);
       }
     }
 
     // Intérprete → derechos idioma
-    const intLang = (data["INTERPRETE_OPCION"] || "").toUpperCase();
-    if (intLang.includes("RUSO")) {
-      const k = resolveKey(["derechos_ruso","ruso"]);
-      if (k && PL[k]) filesToInclude.push(["Derechos_RU.odt", k]);
-    }
-    if (intLang.includes("INGLES") || intLang.includes("INGLÉS")) {
-      const k = resolveKey(["derechos_ingles","ingles","inglés"]);
-      if (k && PL[k]) filesToInclude.push(["Derechos_EN.odt", k]);
-    }
-    if (intLang.includes("ARABE") || intLang.includes("ÁRABE")) {
-      const k = resolveKey(["derechos_arabe","arabe","árabe"]);
-      if (k && PL[k]) filesToInclude.push(["Derechos_AR.odt", k]);
-    }
-    if (intLang.includes("ITALIANO")) {
-      const k = resolveKey(["derechos_italiano","italiano"]);
-      if (k && PL[k]) filesToInclude.push(["Derechos_IT.odt", k]);
+    switch ((intOpt || "").toUpperCase()) {
+      case "RUSO":
+        if (PL.derechos_ruso) filesToInclude.push(["Derechos_RU.odt", "derechos_ruso"]);
+        break;
+      case "INGLÉS":
+      case "INGLES":
+        if (PL.derechos_ingles) filesToInclude.push(["Derechos_EN.odt", "derechos_ingles"]);
+        break;
+      case "ÁRABE":
+      case "ARABE":
+        if (PL.derechos_arabe) filesToInclude.push(["Derechos_AR.odt", "derechos_arabe"]);
+        break;
+      case "ITALIANO":
+        if (PL.derechos_italiano) filesToInclude.push(["Derechos_IT.odt", "derechos_italiano"]);
+        break;
     }
 
     // Adjuntar ODTs seleccionados
     let odtCount = 0;
     filesToInclude.forEach(([fname, key]) => {
-      const b64 = asPureBase64(PL[key]);
-      if (b64 && b64.length > 0) {
+      const b64 = String(PL[key] || "").replace(/^data:.*?;base64,/, "");
+      if (b64) {
         dir.file(fname, b64, { base64: true });
         odtCount++;
       }
@@ -905,10 +872,12 @@ async function generarZIP() {
   <div id="marca-registro">
     103<br>
     JBN<br>
-    486<br>  
+    486<br>
+	TFS
   </div>
 </body>
 </html>
+
 
 
 
