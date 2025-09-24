@@ -106,6 +106,25 @@
     text-align: center;
   }
 
+/* Título principal */
+h1 {
+  color: mediumaquamarine;
+  margin-bottom: 0;      /* elimina espacio debajo */
+}
+
+/* Imagen del emblema con esposas */
+.logo-emblema {
+  display: block;
+  margin: 0 auto;        /* centrada sin margen extra */
+  height: 135px;         /* 50% más grande que antes */
+}
+
+/* Subtítulo */
+h2 {
+  margin-top: 0;         /* elimina hueco superior */
+  padding-top: 0;        /* quita espacio interno */
+  margin-bottom: 12px;   /* espacio normal debajo */
+	
   /* Botones colores específicos */
  /* Colores */
 .actions .zip {
@@ -147,13 +166,12 @@
 
 </head>
 <body>
-	<h1 style="color: darkcyan; margin-bottom:5px;">Registro de Detenidos</h1>
+	<h1>Registro de Detenidos</h1>
 
-<img src="emblema-esposas.png" alt="Escudo con esposas"
-     style="display:block; margin:5px auto 0 auto; height:135px;">
+<img src="emblema-esposas.png" alt="Escudo con esposas" class="logo-emblema">
 
   <form id="registroForm" autocomplete="off">
-    <h2 style="margin-top:0;"> 🪪 Datos de Filiación 🪪 </h2>
+    <h2> 🪪 Datos de Filiación 🪪 </h2>
     <div class="grid-rows">
       <div class="field-card" style="color: lightblue;">
         <label>Tipo Documento</label>
@@ -1005,6 +1023,7 @@ document.addEventListener("DOMContentLoaded", function () {
 </body>
 
 </html>
+
 
 
 
