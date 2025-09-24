@@ -107,7 +107,8 @@
   }
 
   /* Botones colores específicos */
-  #btnDescargar { background: #003366; } /* azul oscuro */
+  #btnDescargar Excel  { background: #003366; } /* azul oscuro */
+	 #btnDescargar ZIP { background: #66cdaa; }
   #btnCargar { background: #28a745; } /* verde */
   #btnRefrescar { background: #007bff; } /* azul */
 </style>
@@ -284,8 +285,12 @@
       <input type="file" id="fileInputXLSX" accept=".xlsx" style="display:none">
 
       <button type="button" id="btnDescargar" onclick="generarXLSX()" >
-        💾 Descarga
+        💾 Descargar Excel
       </button>
+
+		<button type="button" id="btnDescargarZip" onclick="descargarZip()">
+        💾 Descargar ZIP
+       </button>
 
       <button type="button" id="btnCargar" onclick="cargarExcel()" >
         🗂️ Carga
@@ -667,6 +672,192 @@ function setSelectWithInput(selectName, excelValue) {
     }
   }
 
+	// DESCARGAR ZIP
+async function descargarZip() {
+  const msg = document.getElementById("message");
+  msg.innerText = "Generando ZIP...";
+
+  try {
+    const form = document.getElementById("registroForm");
+    const fd = new FormData(form);
+    const data = {};
+    fd.forEach((v, k) => data[k] = v);
+
+    // Normalizaciones previas (igual que en tu código)
+    const optTD = data["TIPO DOCUMENTO_OPCION"];
+    data["TIPO DOCUMENTO"] = (optTD === "OTRO") ? (data["TIPO DOCUMENTO"] || "") : optTD;
+    if (optTD === "INDOCUMENTADO/A") { data["NºDOCUMENTO"] = ""; } else { data["NºDOCUMENTO"] = data["NºDOCUMENTO"] || ""; }
+    data["SEXO"] = data["SEXO_OPCION"] || "";
+    data["INSTRUCTOR"] = data["INSTRUCTOR"] || "";
+    data["FECHA_GENERACION"] = document.getElementById('fechaGeneracion')?.value || '';
+
+    const nomDisplay = (data["NOMBRE_PADRES_OPCION"] === "OTRO") ? (data["NOMBRE_PADRES"] || "") : (data["NOMBRE_PADRES_OPCION"] || "");
+    const domDisplay = (data["DOMICILIO_OPCION"] === "OTRO") ? (data["DOMICILIO"] || "") : (data["DOMICILIO_OPCION"] || "");
+    const telDisplay = (data["TELÉFONO_OPCION"] === "OTRO") ? (data["TELÉFONO"] || "") : (data["TELÉFONO_OPCION"] || "");
+
+    data["MEDICO"] = (data["MEDICO"] === "SI") ? "SI" : "NO";
+    data["CONSULADO"] = (data["CONSULADO"] === "SI") ? "SI" : "NO";
+
+    // Alias para ODT: soportar {{IDIOMA}} o {{INTERPRETE}}
+    const intOpt = data["INTERPRETE_OPCION"] || "NO";
+    let interpreteDisplay = "NO";
+    if (intOpt === "OTRO") {
+      interpreteDisplay = data["IDIOMA"] || "";
+    } else if (intOpt !== "NO") {
+      interpreteDisplay = intOpt;
+    }
+    data["IDIOMA"] = interpreteDisplay;
+    data["INTERPRETE"] = interpreteDisplay;
+
+    data["NOMBRE_PADRES"] = nomDisplay;
+    data["Nombre de los Padres"] = nomDisplay;
+    data["DOMICILIO"] = domDisplay;
+    data["TELÉFONO"] = telDisplay;
+
+    // Construir mapa en MAYÚSCULAS para ODT
+    const dataUpper = {};
+    for (const k in data) {
+      dataUpper[k] = (data[k] || "").toString().toUpperCase();
+    }
+
+    const zip = new JSZip();
+
+    // Construir nombre base para carpeta y archivos
+    function removeDiacritics(s) {
+      return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ñ/gi, 'n');
+    }
+
+    const diligPartRaw = String(data["DILIGENCIAS"] || '').replace(/\//g, '-').trim();
+    const delitoPart = String(data["DELITO"] || '').trim();
+    const nombrePart = String(data["Nombre"] || '').trim();
+    const apellidosPart = String(data["APELLIDOS"] || '').trim();
+
+    let combined = `${diligPartRaw} ${delitoPart} ${nombrePart} ${apellidosPart}`.trim()
+      .replace(/_/g, ' ')
+      .replace(/\s+/g, ' ');
+
+    combined = removeDiacritics(combined).replace(/[^A-Za-z0-9 -]/g, '').trim();
+
+    const base = combined.toUpperCase() || "DOCUMENTO";
+
+    // Crear carpeta interna del ZIP
+    const folder = zip.folder(base);
+
+    // Calcular edad
+    function calcularEdad(fechaStr) {
+      const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(fechaStr || "");
+      if (!m) return null;
+      const dia = parseInt(m[1], 10), mes = parseInt(m[2], 10) - 1, anio = parseInt(m[3], 10);
+      const nacimiento = new Date(anio, mes, dia), hoy = new Date();
+      let edad = hoy.getFullYear() - nacimiento.getFullYear();
+      const mDiff = hoy.getMonth() - nacimiento.getMonth();
+      if (mDiff < 0 || (mDiff === 0 && hoy.getDate() < nacimiento.getDate())) edad--;
+      return edad;
+    }
+    const edad = calcularEdad(data["FECHA DE NACIMIENTO"]);
+
+    // Construir lista de documentos
+    let docs = [
+      { key: "fax", name: `Fax.odt` },
+      { key: "derechos_espanol", name: `derechos_esp.odt` }
+    ];
+
+    // Edad → amarillas/azules
+    if (edad !== null) {
+      if (edad >= 18) docs.unshift({ key: "amarillas", name: `amarillas.odt` });
+      else docs.unshift({ key: "azules", name: `azules.odt` });
+    } else {
+      docs.unshift({ key: "azules", name: `azules.odt` });
+      docs.unshift({ key: "amarillas", name: `amarillas.odt` });
+    }
+
+    // Intérprete → idioma adicional
+    const idiomaSel = (intOpt || "").trim().toUpperCase();
+    switch (idiomaSel) {
+      case "INGLÉS":
+        docs.push({ key: "derechos_ingles", name: `derechos_ing.odt` });
+        break;
+      case "ÁRABE":
+        docs.push({ key: "derechos_arabe", name: `derechos_arabe.odt` });
+        break;
+      case "ITALIANO":
+        docs.push({ key: "derechos_italiano", name: `derechos_ita.odt` });
+        break;
+      case "RUSO":
+        docs.push({ key: "derechos_ruso", name: `derechos_ruso.odt` });
+        break;
+      case "OTRO":
+        const idiomaOtro = (data["IDIOMA"] || "").trim().toLowerCase();
+        if (idiomaOtro) {
+          const keyCustom = `derechos_${idiomaOtro}`;
+          if (PLANTILLAS[keyCustom]) {
+            docs.push({ key: keyCustom, name: `${keyCustom}_${base}.odt` });
+          }
+        }
+        break;
+    }
+
+    // Generar ODTs dentro de la carpeta
+    let ok = 0;
+    for (const d of docs) {
+      if (!PLANTILLAS[d.key]) continue;
+      const odt = await generarODTUint8(PLANTILLAS[d.key], dataUpper);
+      folder.file(d.name, odt, { compression: "STORE" });
+      ok++;
+    }
+
+    // Generar XLSX resumen
+    const filas = [
+      ["Nombre", U(data["Nombre"])],
+      ["Apellidos", U(data["APELLIDOS"])],
+      ["Tipo de documento", U(data["TIPO DOCUMENTO"])],
+      ["Nº Documento", U(data["NºDOCUMENTO"])],
+      ["Sexo", U(data["SEXO"])],
+      ["Nacionalidad", U(data["NACIONALIDAD"])],
+      ["Nombre de los Padres", U(data["Nombre de los Padres"])],
+      ["Fecha de nacimiento", U(data["FECHA DE NACIMIENTO"])],
+      ["Lugar de nacimiento", U(data["LUGAR DE NACIMIENTO"])],
+      ["Domicilio", U(data["DOMICILIO"])],
+      ["Teléfono", U(data["TELÉFONO"])],
+      ["Delito", U(data["DELITO"])],
+      ["C.P. Agentes", U(data["C.P. AGENTES"])],
+      ["Diligencias", U(data["DILIGENCIAS"])],
+      ["Instructor", U(data["INSTRUCTOR"])],
+      ["Lugar del hecho", U(data["LUGAR DEL HECHO"])],
+      ["Lugar de la detención", U(data["LUGAR DE LA DETENCIÓN"])],
+      ["Hora del hecho", (document.getElementById('horaHecho')?.value || data["HORA DEL HECHO"] || "").trim()],
+      ["Hora de la detención", (document.getElementById('horaDetencion')?.value || data["HORA DE LA DETENCIÓN"] || "").trim()],
+      ["Breve resumen de los hechos", U(data["BREVE RESUMEN DE LOS HECHOS"])],
+      ["Indicios por los que se detiene", U(data["INDICIOS POR LOS QUE SE DETIENE"])],
+      ["Abogado", U(data["ABOGADO"])],
+      ["Comunicarse con", U(data["COMUNICARSE CON:"])],
+      ["Informar de su detención", U(data["INFORMAR DE SU DETENCION"])],
+      ["Intérprete", U(interpreteDisplay)],
+      ["Médico", U(data["MEDICO"])],
+      ["Consulado", U(data["CONSULADO"])],
+      ["Indicativo", U(data["Indicativo"])],
+      ["Fecha de generación", U(data["FECHA_GENERACION"])]
+    ];
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(filas);
+    ws['!cols'] = [{ wch: 40 }, { wch: 40 }];
+    XLSX.utils.book_append_sheet(wb, ws, "Resumen");
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    folder.file("registro.xlsx", wbout);
+
+    // Generar ZIP y descargar
+    const blob = await zip.generateAsync({ type: "blob" });
+    const nombreZip = `${sanitizeForFilename(data["Nombre"] || "")} ${sanitizeForFilename(data["APELLIDOS"] || "")} ${new Date().toISOString().slice(0, 10)}.zip`.trim();
+    saveBlob(blob, nombreZip);
+
+    msg.innerText = `✅ ZIP generado (${ok} ODT + XLSX) y descargado`;
+  } catch (err) {
+    console.error(err);
+    msg.innerText = "❌ Error al generar ZIP: " + (err?.message || err);
+  }
+}
+
   // Guardar con File System Access (evita MOTW)
   async function saveBlob(blob, filename){
     if(window.showSaveFilePicker){
@@ -715,6 +906,7 @@ function setSelectWithInput(selectName, excelValue) {
 
 </body>
 </html>
+
 
 
 
