@@ -681,7 +681,7 @@
     }
   });
 
- // --- NUEVO: descargar ZIP con carpeta (XLSX + ODTs) ---
+// --- NUEVO: descargar ZIP con carpeta (XLSX + ODTs) ---
 async function generarZIP() {
   const msg = document.getElementById("message");
   msg.innerText = "Generando ZIP...";
@@ -692,15 +692,15 @@ async function generarZIP() {
     const data = {};
     fd.forEach((v,k) => data[k] = v);
 
-    // ====== Normalizaciones (idéntico criterio que generarXLSX) ======
+    // ====== Normalizaciones básicas ======
     const optTD = data["TIPO DOCUMENTO_OPCION"];
     data["TIPO DOCUMENTO"] = (optTD === "OTRO") ? (data["TIPO DOCUMENTO"] || "") : optTD;
-    if (optTD === "INDOCUMENTADO/A") { data["NºDOCUMENTO"] = ""; } else { data["NºDOCUMENTO"] = data["NºDOCUMENTO"] || ""; }
+    if (optTD === "INDOCUMENTADO/A") data["NºDOCUMENTO"] = "";
     data["SEXO"] = data["SEXO_OPCION"] || "";
     data["INSTRUCTOR"] = data["INSTRUCTOR"] || "";
-    data["FECHA_GENERACION"] = document.getElementById('fechaGeneracion')?.value || '';
+    data["FECHA_GENERACION"] = document.getElementById('fechaGeneracion')?.value || "";
 
-    // Delitos (usar el mismo array global delitosElegidos)
+    // Delitos → texto plano
     let delitoTexto = "";
     if (typeof delitosElegidos !== "undefined") {
       if (delitosElegidos.length === 1) delitoTexto = delitosElegidos[0];
@@ -709,26 +709,25 @@ async function generarZIP() {
     }
     data["DELITO"] = delitoTexto;
 
+    // Campos OTRO
     const nomDisplay = (data["NOMBRE_PADRES_OPCION"] === "OTRO") ? (data["NOMBRE_PADRES"] || "") : (data["NOMBRE_PADRES_OPCION"] || "");
     const telDisplay = (data["TELÉFONO_OPCION"] === "OTRO") ? (data["TELÉFONO"] || "") : (data["TELÉFONO_OPCION"] || "");
     const abDisplay  = (data["ABOGADO_OPCION"] === "OTRO") ? (data["ABOGADO"] || "") : (data["ABOGADO_OPCION"] || "");
 
     data["ABOGADO"] = abDisplay;
-    data["COMUNICARSE CON:"] = (data["COMUNICARSE CON_OPCION"] === "OTRO") ? (data["COMUNICARSE CON:"] || "") : (data["COMUNICARSE CON_OPCION"] || "");
-    data["INFORMAR DE SU DETENCION"] = (data["INFORMAR DE SU DETENCION_OPCION"] === "OTRO") ? (data["INFORMAR DE SU DETENCION:"] || "") : (data["INFORMAR DE SU DETENCION_OPCION"] || "");
     data["NOMBRE_PADRES"] = nomDisplay;
-    data["Nombre de los Padres"] = nomDisplay;
     data["DOMICILIO"] = (data["DOMICILIO_OPCION"] === "OTRO") ? (data["DOMICILIO"] || "") : (data["DOMICILIO_OPCION"] || "");
     data["TELÉFONO"] = telDisplay;
-
     data["MEDICO"] = (data["MEDICO"] === "SI") ? "SI" : "NO";
     data["CONSULADO"] = (data["CONSULADO"] === "SI") ? "SI" : "NO";
 
+    // Intérprete
     const intOpt = data["INTERPRETE_OPCION"] || "NO";
     let interpreteDisplay = "NO";
-    if (intOpt === "OTRO") { interpreteDisplay = data["IDIOMA"] || ""; }
-    else if (intOpt !== "NO") { interpreteDisplay = intOpt; }
+    if (intOpt === "OTRO") interpreteDisplay = data["IDIOMA"] || "";
+    else if (intOpt !== "NO") interpreteDisplay = intOpt;
 
+    // ====== Crear XLSX ======
     function U(s){ return String(s ?? '').toUpperCase(); }
     function sanitizeForFilename(s){ return String(s||'').replace(/[\/\\:*?"<>|]+/g,' ').trim(); }
 
@@ -739,7 +738,7 @@ async function generarZIP() {
       ["Nº Documento", U(data["NºDOCUMENTO"])],
       ["Sexo", U(data["SEXO"])],
       ["Nacionalidad", U(data["NACIONALIDAD"])],
-      ["Nombre de los Padres", U(data["Nombre de los Padres"])],
+      ["Nombre de los Padres", U(data["NOMBRE_PADRES"])],
       ["Fecha de nacimiento", U(data["FECHA DE NACIMIENTO"])],
       ["Lugar de nacimiento", U(data["LUGAR DE NACIMIENTO"])],
       ["Domicilio", U(data["DOMICILIO"])],
@@ -750,8 +749,8 @@ async function generarZIP() {
       ["Instructor", U(data["INSTRUCTOR"])],
       ["Lugar del hecho", U(data["LUGAR DE HECHO"])],
       ["Lugar de la detención", U(data["LUGAR DE LA DETENCIÓN"])],
-      ["Hora del hecho", (document.getElementById('horaHecho')?.value || data["HORA DEL HECHO"] || "").trim()],
-      ["Hora de la detención", (document.getElementById('horaDetencion')?.value || data["HORA DE LA DETENCIÓN"] || "").trim()],
+      ["Hora del hecho", (document.getElementById('horaHecho')?.value || "").trim()],
+      ["Hora de la detención", (document.getElementById('horaDetencion')?.value || "").trim()],
       ["Breve resumen de los hechos", U(data["BREVE RESUMEN DE LOS HECHOS"])],
       ["Indicios por los que se detiene", U(data["INDICIOS POR LOS QUE SE DETIENE"])],
       ["Abogado", U(data["ABOGADO"])],
@@ -764,28 +763,27 @@ async function generarZIP() {
       ["Fecha de generación", U(data["FECHA_GENERACION"])]
     ];
 
-    // ====== Crear XLSX en memoria ======
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet(filas);
     ws['!cols'] = [{wch:40},{wch:40}];
     XLSX.utils.book_append_sheet(wb, ws, "Resumen");
-    const wbout = XLSX.write(wb, { bookType:'xlsx', type:'array' }); // ArrayBuffer
+    const wbout = XLSX.write(wb, { bookType:'xlsx', type:'array' });
 
-    // Nombres para carpeta y archivo
+    // ====== Crear carpeta del ZIP ======
     const nombreBase = `${sanitizeForFilename(data["Nombre"]||"")} ${sanitizeForFilename(data["APELLIDOS"]||"")}`.trim();
     const fechaISO = new Date().toISOString().slice(0,10);
     const folderName = (nombreBase ? `${nombreBase} ${fechaISO}` : `Registro ${fechaISO}`).trim();
     const xlsxName = `${folderName}.xlsx`;
 
-    // ====== Crear ZIP y carpeta ======
     const zip = new JSZip();
     const dir = zip.folder(folderName);
 
-    // Adjuntar XLSX
-    dir.file(xlsxName, wbout); // ArrayBuffer ok
+    dir.file(xlsxName, wbout); // XLSX añadido
 
-    // ====== Elegir plantillas según condiciones ======
+    // ====== Selección de ODTs ======
     const PL = (window.PLANTILLAS || {});
+    console.log("PL keys disponibles:", Object.keys(PL));
+
     const filesToInclude = [];
 
     // Siempre
@@ -795,14 +793,11 @@ async function generarZIP() {
     // Edad
     let edadNum = null;
     if (data["FECHA DE NACIMIENTO"]) {
-      const partes = data["FECHA DE NACIMIENTO"].split(/[\/\-]/); 
+      const partes = data["FECHA DE NACIMIENTO"].split(/[\/\-]/);
       if (partes.length >= 3) {
         let d, m, y;
-        if (partes[0].length === 4) { // yyyy-mm-dd
-          y = parseInt(partes[0]); m = parseInt(partes[1]); d = parseInt(partes[2]);
-        } else { // dd/mm/yyyy
-          d = parseInt(partes[0]); m = parseInt(partes[1]); y = parseInt(partes[2]);
-        }
+        if (partes[0].length === 4) { y = +partes[0]; m = +partes[1]; d = +partes[2]; }
+        else { d = +partes[0]; m = +partes[1]; y = +partes[2]; }
         if (y && m && d) {
           const birth = new Date(y, m-1, d);
           const today = new Date();
@@ -813,43 +808,28 @@ async function generarZIP() {
       }
     }
     if (edadNum !== null) {
-      if (edadNum < 18 && PL["azules"]) {
-        filesToInclude.push(["Plantilla_Azules.odt", "azules"]);
-      } else if (edadNum >= 18 && PL["amarillas"]) {
-        filesToInclude.push(["Plantilla_Amarillas.odt", "amarillas"]);
-      }
+      if (edadNum < 18 && PL["azules"]) filesToInclude.push(["Plantilla_Azules.odt", "azules"]);
+      else if (edadNum >= 18 && PL["amarillas"]) filesToInclude.push(["Plantilla_Amarillas.odt", "amarillas"]);
     }
 
     // Intérprete
     const intLang = (data["INTERPRETE_OPCION"] || "").toUpperCase();
-    switch (intLang) {
-      case "RUSO":
-        if (PL["derechos_ruso"]) filesToInclude.push(["Derechos_RU.odt", "derechos_ruso"]);
-        break;
-      case "INGLÉS":
-      case "INGLES":
-        if (PL["derechos_ingles"]) filesToInclude.push(["Derechos_EN.odt", "derechos_ingles"]);
-        break;
-      case "ÁRABE":
-      case "ARABE":
-        if (PL["derechos_arabe"]) filesToInclude.push(["Derechos_AR.odt", "derechos_arabe"]);
-        break;
-      case "ITALIANO":
-        if (PL["derechos_italiano"]) filesToInclude.push(["Derechos_IT.odt", "derechos_italiano"]);
-        break;
-    }
+    if (intLang.includes("RUSO") && PL["derechos_ruso"]) filesToInclude.push(["Derechos_RU.odt", "derechos_ruso"]);
+    if ((intLang.includes("INGLES") || intLang.includes("INGLÉS")) && PL["derechos_ingles"]) filesToInclude.push(["Derechos_EN.odt", "derechos_ingles"]);
+    if ((intLang.includes("ARABE") || intLang.includes("ÁRABE")) && PL["derechos_arabe"]) filesToInclude.push(["Derechos_AR.odt", "derechos_arabe"]);
+    if (intLang.includes("ITALIANO") && PL["derechos_italiano"]) filesToInclude.push(["Derechos_IT.odt", "derechos_italiano"]);
 
-    // Adjuntar seleccionados
+    // Adjuntar
     let odtCount = 0;
     filesToInclude.forEach(([fname, key]) => {
       const b64 = PL[key];
-      if (b64 && typeof b64 === "string" && b64.length > 0) {
+      if (b64) {
         dir.file(fname, b64, { base64: true });
         odtCount++;
       }
     });
 
-    // Generar y descargar ZIP
+    // ====== Generar y descargar ZIP ======
     const zipBlob = await zip.generateAsync({ type: "blob" });
     await saveBlob(zipBlob, `${folderName}.zip`);
 
@@ -879,10 +859,12 @@ async function generarZIP() {
   <div id="marca-registro">
     103<br>
     JBN<br>
-    486
+    486<br>
+	TFS  
   </div>
 </body>
 </html>
+
 
 
 
