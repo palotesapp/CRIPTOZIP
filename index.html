@@ -107,9 +107,16 @@
   }
 
   /* Botones colores específicos */
-  #btnDescargar { background: #003366; } /* azul oscuro */
-  #btnCargar { background: #006400; } /* verde */
-  #btnRefrescar { background: #1E90FF; } /* azul */
+ /* Colores */
+.actions .zip {
+  background-color: darkblue;      /* Botón ZIP en azul oscuro */
+}
+.actions .xlsx {
+  background-color: #006400;   /* Botón XLSX en verde */
+}
+.actions .refresh {
+  background-color: #1E90FF;   /* Botón refrescar en azul */
+}
 
   #delitoOtroTexto::placeholder {
   color: #ff0000; /* Cambia #ff0000 por el color que quieras */
@@ -140,7 +147,7 @@
 
 </head>
 <body>
-  <h1>Registro de Detenidos</h1>
+  <h1> style="color: mediumaquamarine;"Registro de Detenidos</h1>
 
   <form id="registroForm" autocomplete="off">
     <h2> 🪪 Datos de Filiación 🪪 </h2>
@@ -995,3 +1002,4 @@ document.addEventListener("DOMContentLoaded", function () {
 </body>
 
 </html>
+
