@@ -672,6 +672,67 @@ function setSelectWithInput(selectName, excelValue) {
     }
   }
 
+	// Helpers
+function escapeRegExp(s){ return s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"); }
+function buildFlexibleRegex(key){
+  const chars = key.split("").map(c=>escapeRegExp(c));
+  const flexible = chars.join("(?:\\s|<[^>]+>|&nbsp;)*");
+  return new RegExp("\\{\\{(?:\\s|<[^>]+>|&nbsp;)*"+flexible+"(?:\\s|<[^>]+>|&nbsp;)*\\}\\}","gi");
+}
+function toAsciiFileName(s){return (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/ñ/gi,'n').replace(/[^A-Za-z0-9._-]+/g,'_');}
+function xmlEscape(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function sanitizeForFilename(s){return String(s||'').replace(/[\/\\:*?"<>|]+/g,' ').trim();}
+function U(s){ return String(s ?? '').toUpperCase(); } // MAYÚSCULAS
+
+// Función auxiliar para manejar selects con input "OTRO" (única versión)
+function setSelectWithInput(selectName, excelValue) {
+  const select = document.querySelector(`[name="${selectName}"]`);
+  if (!select) return;
+
+  const card = select.closest(".field-card");
+  const textInput = card ? card.querySelector("input[type=text], textarea") : null;
+  const normExcel = normalizeKey(excelValue);
+
+  let matched = false;
+  for (const opt of select.options) {
+    if (normalizeKey(opt.value) === normExcel) {
+      select.value = opt.value;
+      matched = true;
+      if (textInput) {
+        textInput.value = "";
+        textInput.style.display = "none";  // OCULTAR input
+      }
+      break;
+    }
+  }
+
+  if (!matched) {
+    if (!excelValue || ["NOAPORTA","NO","DEOFICIO"].includes(normExcel)) {
+      // Selecciona opción directa
+      const fallback = Array.from(select.options).find(opt =>
+        ["NOAPORTA","NO","DEOFICIO"].includes(normalizeKey(opt.value))
+      );
+      if (fallback) select.value = fallback.value;
+      if (textInput) {
+        textInput.value = "";
+        textInput.style.display = "none";  // OCULTAR input
+      }
+    } else {
+      // Valor libre → OTRO
+      const otherOpt = Array.from(select.options).find(opt => normalizeKey(opt.value) === "OTRO");
+      if (otherOpt) select.value = otherOpt.value;
+      if (textInput) {
+        textInput.value = excelValue;
+        textInput.style.display = "block";  // MOSTRAR input con valor
+      }
+    }
+  }
+
+  select.dispatchEvent(new Event("change"));
+}
+
+// El resto de funciones (cargarExcel, generarXLSX, descargarZip, etc.) se mantienen intactas tal cual las tienes.
+
 	// Función para generar ODT a partir de plantilla y datos
 // PLANTILLA: base64 string o Uint8Array con el contenido ODT
 // data: objeto con claves y valores para reemplazar {{CLAVE}} en plantilla
@@ -929,6 +990,7 @@ async function descargarZip() {
 
 </body>
 </html>
+
 
 
 
