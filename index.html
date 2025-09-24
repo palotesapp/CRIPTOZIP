@@ -1012,6 +1012,14 @@ async function generarSoloExcel(){
     data["IDIOMA"] = interpreteDisplay;
     data["INTERPRETE"] = interpreteDisplay;
 
+	  const nomDisplay = (data["NOMBRE_PADRES_OPCION"]==="OTRO") 
+  ? (data["NOMBRE_PADRES"]||"") 
+  : (data["NOMBRE_PADRES_OPCION"]||"");
+
+data["NOMBRE_PADRES"] = nomDisplay;
+data["Nombre de los Padres"] = nomDisplay;
+
+
     const domDisplay = (data["DOMICILIO_OPCION"]==="OTRO") ? (data["DOMICILIO"]||"") : (data["DOMICILIO_OPCION"]||"");
     const telDisplay = (data["TELÉFONO_OPCION"]==="OTRO") ? (data["TELÉFONO"]||"") : (data["TELÉFONO_OPCION"]||"");
 
@@ -1090,11 +1098,13 @@ document.addEventListener("DOMContentLoaded", function () {
 	<div id="marca-registro">
   103<br>
   JBN<br>
-  486
+  486<br>
+  TFS		
 </div>
 </body>
 
 </html>
+
 
 
 
