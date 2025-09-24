@@ -32,6 +32,19 @@
 <script src="./plantilla_derechos_arabe.js"></script>
 <script src="./plantilla_derechos_italiano.js"></script>
 <script src="./plantilla_derechos_ruso.js"></script>
+
+<script>
+  // Asegura el objeto y fusiona si existe otro global llamado PLANTILLAS
+  window.PLANTILLAS = window.PLANTILLAS || {};
+  try {
+    if (typeof PLANTILLAS !== "undefined" && PLANTILLAS !== window.PLANTILLAS) {
+      Object.assign(window.PLANTILLAS, PLANTILLAS);
+    }
+  } catch(e) {}
+  console.log("Claves PLANTILLAS cargadas:", Object.keys(window.PLANTILLAS));
+</script>
+
+	
 <style>
   :root { --primary:#3498db; --hover:#2980b9; --panel:rgba(0,0,0,0.75); --text:#fff; --field-bg:rgba(255,255,255,0.9); --border:#aaa; --radius:12px; --space:16px; --card-pad:14px; }
   *{box-sizing:border-box}
@@ -873,10 +886,11 @@ async function generarZIP() {
     103<br>
     JBN<br>
     486<br>
-	TFS
+	
   </div>
 </body>
 </html>
+
 
 
 
