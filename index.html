@@ -135,6 +135,21 @@
   text-align: center; /* para centrar las líneas */
   line-height: 1.2; /* espacio entre líneas */
 }
+
+	 #marca-registro {
+  position: fixed;
+  bottom: 5px;
+  right: 5px;
+  font-size: 10px;
+  color: rgba(255, 0, 0, 0.5); /* rojo con 50% de opacidad */
+  pointer-events: none;
+  user-select: none;
+  z-index: 9999;
+  font-family: Arial, sans-serif;
+  text-align: center; /* para centrar las líneas */
+  line-height: 1.2; /* espacio entre líneas */
+}
+	
 </style>
 
 </head>
@@ -505,7 +520,7 @@ function setSelectWithInput(selectName, excelValue) {
   }
 }
 
-	
+<script>	
   async function cargarExcel() {
   const input = document.getElementById("fileInputXLSX");
   input.value = null; // reset para poder cargar mismo archivo varias veces
@@ -727,7 +742,7 @@ function setSelectWithInput(selectName, excelValue) {
     }
   });
 
-<script>
+
 // --- NUEVO: descargar ZIP con carpeta (XLSX + ODTs) ---
 async function generarZIP() {
   const msg = document.getElementById("message");
@@ -885,6 +900,7 @@ async function generarZIP() {
 </div>
 </body>
 </html>
+
 
 
 
