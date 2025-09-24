@@ -36,7 +36,7 @@
   :root { --primary:#3498db; --hover:#2980b9; --panel:rgba(0,0,0,0.75); --text:#fff; --field-bg:rgba(255,255,255,0.9); --border:#aaa; --radius:12px; --space:16px; --card-pad:14px; }
   *{box-sizing:border-box}
   body{margin:0;padding:0;font-family:Segoe UI,Roboto,Arial,sans-serif;background:url('fondo.jpg') no-repeat center center fixed;background-size:cover;min-height:100vh;display:flex;flex-direction:column;justify-content:center;}
-  h1{text-align:center;margin:16px 0 20px;font-size:32px;font-weight:800;color:#fff;text-transform:uppercase;text-shadow:2px 2px 8px rgba(0,0,0,.7);}
+  h1{text-align:center;margin:16px 0 10px;font-size:32px;font-weight:800;color:#fff;text-transform:uppercase;text-shadow:2px 2px 8px rgba(0,0,0,.7);}
   form{background:var(--panel);color:var(--text);border-radius:var(--radius);max-width:1400px;margin:0 auto 32px;padding:28px 32px;box-shadow:0 10px 28px rgba(0,0,0,.6);}
   h2{font-size:20px;text-transform:uppercase;margin-top:28px;margin-bottom:12px;border-bottom:2px solid var(--primary);padding-bottom:6px;letter-spacing:.5px;}
   .grid-rows{display:grid;grid-gap:var(--space);grid-template-columns: repeat(3, minmax(280px,1fr));}
@@ -208,7 +208,7 @@
 
     <h2> 🚔 Hechos 🚔 </h2>
     <div class="grid-rows">
-      <div class="field-card" style="color: green;">
+      <div class="field-card" style="color: lightgreen;">
         <label>Delito(s)</label>
         <select id="delitoSelect">
           <option value="">-- Seleccionar --</option>
@@ -238,7 +238,7 @@
         <input type="text" id="delitoOtroTexto" placeholder="Especificar y pulsar Enter" style="display:none;">
 
         <!-- sub-globo inferior -->
-        <div id="delitosSeleccionados" style="margin-top:8px; padding:5px; border:1px solid #ccc; min-height:30px;">
+        <div id="delitosSeleccionados" style="color: red; margin-top:8px; padding:5px; border:1px solid #ccc; min-height:30px;">
           <em>Ningún delito seleccionado</em>
         </div>
       </div>
@@ -1002,5 +1002,6 @@ document.addEventListener("DOMContentLoaded", function () {
 </body>
 
 </html>
+
 
 
