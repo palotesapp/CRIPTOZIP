@@ -760,6 +760,7 @@ function construirMapaPlaceholders(data, interpreteDisplay, horas) {
 
 
 <script>
+<script>
 // --- Generar ZIP con XLSX + ODTs (rellenos) ---
 async function generarZIP() {
   const msg = document.getElementById("message");
@@ -770,6 +771,9 @@ async function generarZIP() {
     const fd = new FormData(form);
     const data = {};
     fd.forEach((v,k) => data[k] = v);
+
+    // 👇 Helper local para mayúsculas
+    function U(s){ return String(s ?? '').toUpperCase(); }
 
     // ====== Normalizaciones básicas ======
     const optTD = data["TIPO DOCUMENTO_OPCION"];
@@ -930,6 +934,7 @@ async function generarZIP() {
 </script>
 
 
+
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
@@ -949,10 +954,11 @@ async function generarZIP() {
     JBN<br>
     486<br>
 	CNP<br>
-	TFS  
+	  
   </div>
 </body>
 </html>
+
 
 
 
