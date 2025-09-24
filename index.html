@@ -293,651 +293,157 @@ textarea {
 
 <div id="message"></div>
 </form>
+<script>
+ // Función común para preparar datos y filas para Excel
+function prepararDatosExcel() {
+  const form = document.getElementById("registroForm");
+  const fd = new FormData(form);
+  const data = {};
+  fd.forEach((v, k) => data[k] = v);
 
-  <script>
-    // Helpers
-    function escapeRegExp(s){ return s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"); }
-    function buildFlexibleRegex(key){
-      const chars = key.split("").map(c=>escapeRegExp(c));
-      const flexible = chars.join("(?:\\s|<[^>]+>|&nbsp;)*");
-      return new RegExp("\\{\\{(?:\\s|<[^>]+>|&nbsp;)*"+flexible+"(?:\\s|<[^>]+>|&nbsp;)*\\}\\}","gi");
-    }
-    function toAsciiFileName(s){return (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/ñ/gi,'n').replace(/[^A-Za-z0-9._-]+/g,'_');}
-    function xmlEscape(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-    function sanitizeForFilename(s){return String(s||'').replace(/[\/\\:*?"<>|]+/g,' ').trim();}
-    function U(s){ return String(s ?? '').toUpperCase(); } // MAYÚSCULAS
+  // Normalizaciones previas
+  const optTD = data["TIPO DOCUMENTO_OPCION"];
+  data["TIPO DOCUMENTO"] = (optTD === "OTRO") ? (data["TIPO DOCUMENTO"] || "") : optTD;
+  if (optTD === "INDOCUMENTADO/A") { data["NºDOCUMENTO"] = ""; } else { data["NºDOCUMENTO"] = data["NºDOCUMENTO"] || ""; }
+  data["SEXO"] = data["SEXO_OPCION"] || "";
+  data["INSTRUCTOR"] = data["INSTRUCTOR"] || "";
+  data["FECHA_GENERACION"] = document.getElementById('fechaGeneracion')?.value || '';
 
-    // Mostrar inputs "OTRO" + bloquear NºDOC si indocumentado + mostrar IDIOMA si intérprete "OTRO"
-    document.addEventListener('change',e=>{
-      if(e.target.id==="tipoDocumento"){
-        const val=e.target.value;
-        document.getElementById('tipoDocumentoOtro').style.display=(val==="OTRO")?"block":"none";
-        const num=document.getElementById("numeroDocumento");
-        if(val==="INDOCUMENTADO/A"){ num.value=""; num.disabled=true; } else { num.disabled=false; }
-      }
-      if(e.target.id==="interpreteOpcion"){
-        document.getElementById('idioma').style.display=(e.target.value==="OTRO")?"block":"none";
-      }
-      // Mostrar/ocultar campos de texto asociados a "OTRO"
-      if(e.target.tagName==="SELECT" && e.target.closest('.field-card')){
-        const input=e.target.closest('.field-card').querySelector('input[type="text"]');
-        if(input && !["tipoDocumento","interpreteOpcion"].includes(e.target.id)){
-          input.style.display=(e.target.value==="OTRO")?"block":"none";
-        }
-      }
-    });
-
-const selectDelito = document.getElementById("delitoSelect");
-const lista = document.getElementById("delitosSeleccionados");
-const inputOtro = document.getElementById("delitoOtroTexto");
-let delitosElegidos = [];
-
-selectDelito.addEventListener("change", ()=>{
-  const val = selectDelito.value;
-  
-  if (val === "OTRO") {
-    inputOtro.style.display = "inline-block";
-    inputOtro.focus();
-    return;
+  // Normalizar delitos elegidos
+  let delitoTexto = "";
+  if (delitosElegidos.length === 1) {
+    delitoTexto = delitosElegidos[0];
+  } else if (delitosElegidos.length === 2) {
+    delitoTexto = delitosElegidos[0] + " y " + delitosElegidos[1];
+  } else if (delitosElegidos.length > 2) {
+    delitoTexto = delitosElegidos.slice(0, -1).join(", ") + " y " + delitosElegidos[delitosElegidos.length - 1];
   }
-  
-  if (val && !delitosElegidos.includes(val)) {
-    delitosElegidos.push(val);
-    renderDelitos();
+  data["DELITO"] = delitoTexto;
+
+  const abOpt = data["ABOGADO_OPCION"];
+  if (abOpt === "DE OFICIO") { data["ABOGADO"] = "de oficio."; }
+  else if (abOpt === "OTRO") { data["ABOGADO"] = (data["ABOGADO"] || ""); }
+  else { data["ABOGADO"] = data["ABOGADO"] || ""; }
+
+  const ccOpt = data["COMUNICARSE CON_OPCION"];
+  if (ccOpt === "NADIE") { data["COMUNICARSE CON:"] = "nadie."; }
+  else if (ccOpt === "OTRO") { data["COMUNICARSE CON:"] = (data["COMUNICARSE CON:"] || ""); }
+  else { data["COMUNICARSE CON:"] = data["COMUNICARSE CON:"] || ""; }
+
+  const infOpt = data["INFORMAR DE SU DETENCION A_OPCION"] || data["INFORMAR DE SU DETENCION A:"] || "";
+  if (infOpt === "NADIE") { data["INFORMAR DE SU DETENCION A:"] = "nadie."; }
+  else if (infOpt === "OTRO") { data["INFORMAR DE SU DETENCION A:"] = (data["INFORMAR DE SU DETENCION A:"] || ""); }
+  else { data["INFORMAR DE SU DETENCION A:"] = data["INFORMAR DE SU DETENCION A:"] || ""; }
+
+  const intOpt = data["INTERPRETE_OPCION"] || "NO";
+  let interpreteDisplay = "NO";
+
+  if (intOpt === "OTRO") {
+    interpreteDisplay = data["IDIOMA"] || "";
+  } else if (intOpt !== "NO") {
+    interpreteDisplay = intOpt;
   }
-  // reset
-  selectDelito.value = "";
-});
+  data["IDIOMA"] = interpreteDisplay;
+  data["INTERPRETE"] = interpreteDisplay;
 
-inputOtro.addEventListener("keydown", e=>{
-  if(e.key==="Enter"){
-    e.preventDefault();
-    const val = inputOtro.value.trim();
-    if(val && !delitosElegidos.includes(val)){
-      delitosElegidos.push(val);
-      renderDelitos();
-    }
-    inputOtro.value="";
-    inputOtro.style.display="none";
-    selectDelito.value="";
+  const nomDisplay = (data["NOMBRE_PADRES_OPCION"] === "OTRO") ? (data["NOMBRE_PADRES"] || "") : (data["NOMBRE_PADRES_OPCION"] || "");
+  const domDisplay = (data["DOMICILIO_OPCION"] === "OTRO") ? (data["DOMICILIO"] || "") : (data["DOMICILIO_OPCION"] || "");
+  const telDisplay = (data["TELÉFONO_OPCION"] === "OTRO") ? (data["TELÉFONO"] || "") : (data["TELÉFONO_OPCION"] || "");
+
+  data["MEDICO"] = (data["MEDICO"] === "SI") ? "SI" : "NO";
+  data["CONSULADO"] = (data["CONSULADO"] === "SI") ? "SI" : "NO";
+
+  data["NOMBRE_PADRES"] = nomDisplay;
+  data["Nombre de los Padres"] = nomDisplay;
+  data["DOMICILIO"] = domDisplay;
+  data["TELÉFONO"] = telDisplay;
+
+  // Función para limpiar nombre archivo
+  function sanitizeForFilename(s) {
+    return String(s || '').replace(/[\/\\:*?"<>|]+/g, ' ').trim();
   }
-});
+  const hoy = new Date();
+  const dd = String(hoy.getDate()).padStart(2, '0');
+  const mm = String(hoy.getMonth() + 1).padStart(2, '0');
+  const yyyy = String(hoy.getFullYear());
+  const fechaStr = `${dd}-${mm}-${yyyy}`;
+  const excelName = `${sanitizeForFilename(data["Nombre"] || "")} ${sanitizeForFilename(data["APELLIDOS"] || "")} ${fechaStr}.xlsx`.trim();
 
-function renderDelitos() {
-  lista.innerHTML="";
-  if(delitosElegidos.length===0){
-    lista.innerHTML="<em>Ningún delito seleccionado</em>";
-    return;
-  }
-  delitosElegidos.forEach((d,i)=>{
-    const span=document.createElement("span");
-    span.textContent=d;
-    span.style.cssText="padding:3px 6px; margin:2px; background:#eef; border:1px solid #99c; border-radius:4px; display:inline-block; cursor:pointer;";
-    span.title="Click para eliminar";
-    span.addEventListener("click", ()=>{ 
-      delitosElegidos.splice(i,1);
-      renderDelitos();
-    });
-    lista.appendChild(span);
-  });
+  // Construir filas para Excel
+  const filas = [
+    ["Nombre", (data["Nombre"] || "").toUpperCase()],
+    ["Apellidos", (data["APELLIDOS"] || "").toUpperCase()],
+    ["Tipo de documento", (data["TIPO DOCUMENTO"] || "").toUpperCase()],
+    ["Nº Documento", (data["NºDOCUMENTO"] || "").toUpperCase()],
+    ["Sexo", (data["SEXO"] || "").toUpperCase()],
+    ["Nacionalidad", (data["NACIONALIDAD"] || "").toUpperCase()],
+    ["Nombre de los Padres", (data["Nombre de los Padres"] || "").toUpperCase()],
+    ["Fecha de nacimiento", (data["FECHA DE NACIMIENTO"] || "").toUpperCase()],
+    ["Lugar de nacimiento", (data["LUGAR DE NACIMIENTO"] || "").toUpperCase()],
+    ["Domicilio", (domDisplay || "").toUpperCase()],
+    ["Teléfono", (telDisplay || "").toUpperCase()],
+    ["Delito", (data["DELITO"] || "").toUpperCase()],
+    ["C.P. Agentes", (data["C.P. AGENTES"] || "").toUpperCase()],
+    ["Diligencias", (data["DILIGENCIAS"] || "").toUpperCase()],
+    ["Instructor", (data["INSTRUCTOR"] || "").toUpperCase()],
+    ["Lugar del hecho", (data["LUGAR DEL HECHO"] || "").toUpperCase()],
+    ["Lugar de la detención", (data["LUGAR DE LA DETENCIÓN"] || "").toUpperCase()],
+    ["Hora del hecho", (document.getElementById('horaHecho')?.value || data["HORA DEL HECHO"] || "").trim()],
+    ["Hora de la detención", (document.getElementById('horaDetencion')?.value || data["HORA DE LA DETENCIÓN"] || "").trim()],
+    ["Breve resumen de los hechos", (data["BREVE RESUMEN DE LOS HECHOS"] || "").toUpperCase()],
+    ["Indicios por los que se detiene", (data["INDICIOS POR LOS QUE SE DETIENE"] || "").toUpperCase()],
+    ["Abogado", (data["ABOGADO"] || "").toUpperCase()],
+    ["Comunicarse con", (data["COMUNICARSE CON:"] || "").toUpperCase()],
+    ["Informar de su detención a:", (data["INFORMAR DE SU DETENCION A:"] || "").toUpperCase()],
+    ["Intérprete", (interpreteDisplay || "").toUpperCase()],
+    ["Médico", (data["MEDICO"] || "").toUpperCase()],
+    ["Consulado", (data["CONSULADO"] || "").toUpperCase()],
+    ["Indicativo", (data["Indicativo"] || "").toUpperCase()],
+    ["Fecha de generación", (data["FECHA_GENERACION"] || "").toUpperCase()]
+  ];
+
+  return { filas, excelName };
 }
 
-// Normaliza: quita acentos, pasa a mayúsculas y compacta
-function normalizeKey(str) {
-  return str
-    ? str.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase().replace(/[^A-Z0-9]/g,"").trim()
-    : "";
-}
-
-// Auxiliar: maneja selects con input asociado (NO APORTA / OTRO)
-function setSelectWithInput(selectName, excelValue) {
-  const select = document.querySelector(`[name="${selectName}"]`);
-  if (!select) return;
-
-  const card = select.closest(".field-card");
-  const textInput = card ? card.querySelector("input[type=text], textarea") : null;
-  const normExcel = normalizeKey(excelValue);
-
-  let matched = false;
-  for (const opt of select.options) {
-    if (normalizeKey(opt.value) === normExcel) {
-      select.value = opt.value;
-      matched = true;
-      if (textInput) {
-        textInput.value = "";
-        textInput.style.display = "none";  // OCULTAR input
-      }
-      break;
-    }
-  }
-
-  if (!matched) {
-    if (!excelValue || ["NOAPORTA","NO","DEOFICIO"].includes(normExcel)) {
-      // Selecciona opción directa
-      const fallback = Array.from(select.options).find(opt =>
-        ["NOAPORTA","NO","DEOFICIO"].includes(normalizeKey(opt.value))
-      );
-      if (fallback) select.value = fallback.value;
-      if (textInput) {
-        textInput.value = "";
-        textInput.style.display = "none";  // OCULTAR input
-      }
-    } else {
-      // Valor libre → OTRO
-      const otherOpt = Array.from(select.options).find(opt => normalizeKey(opt.value) === "OTRO");
-      if (otherOpt) select.value = otherOpt.value;
-      if (textInput) {
-        textInput.value = excelValue;
-        textInput.style.display = "block";  // MOSTRAR input con valor
-      }
-    }
-  }
-}
-
-// Cargar Excel previo
-async function cargarExcel() {
-  const input = document.getElementById("fileInputXLSX");
-  input.value = null; // reset para poder cargar mismo archivo varias veces
-  input.click();
-
-  input.onchange = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    try {
-      const data = await file.arrayBuffer();
-      const workbook = XLSX.read(data, { type: "array" });
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-
-      rows.forEach(([pregunta, respuesta]) => {
-        console.log("Pregunta leída:", pregunta, "Respuesta:", respuesta);
-        if (!pregunta) return;
-        const qNorm = normalizeKey(pregunta);
-        const r = (respuesta || "").toString().trim();
-
-        // Condición mejorada para TIPO DOCUMENTO
-        if (qNorm.includes("TIPO") && qNorm.includes("DOCUMENTO")) {
-          console.log("Procesando TIPO DOCUMENTO con valor:", r);
-          setSelectWithInput("TIPO DOCUMENTO_OPCION", r);
-          return;
-        }
-
-        // Casos con combo "NO APORTA/OTRO"
-        if (qNorm === "DOMICILIO") { setSelectWithInput("DOMICILIO_OPCION", r); return; }
-        if (qNorm === "TELEFONO") { setSelectWithInput("TELÉFONO_OPCION", r); return; }
-        if (qNorm === "NOMBREDELOSPADRES") { setSelectWithInput("NOMBRE_PADRES_OPCION", r); return; }
-        if (qNorm === "ABOGADO") { setSelectWithInput("ABOGADO_OPCION", r); return; }
-        if (qNorm === "COMUNICARSECON") { setSelectWithInput("COMUNICARSE CON_OPCION", r); return; }
-        if (qNorm === "INFORMARDESUDETENCION" || qNorm === "INFORMARDESUDETENCIONA" || qNorm === "INFORMARDESUDETENCIONA:") { 
-          setSelectWithInput("INFORMAR DE SU DETENCION_OPCION", r); 
-          return; 
-        }
-        if (qNorm === "INTERPRETE") { setSelectWithInput("INTERPRETE_OPCION", r); return; }
-
-        // Delitos múltiples
-        if (qNorm === "DELITO") {
-          delitosElegidos = r.split(/,\s*|\s+y\s+/).map(v => v.trim()).filter(Boolean);
-          renderDelitos();
-          return;
-        }
-
-        // Campos simples (input/select/textarea)
-        const allInputs = document.querySelectorAll("[name]");
-        for (const el of allInputs) {
-          const elNorm = normalizeKey(el.name);
-          if (elNorm === qNorm) {
-            if (el.tagName === "SELECT") {
-              el.value = r;
-              el.dispatchEvent(new Event("change"));
-            } else if (el.tagName === "INPUT" && el.type === "time") {
-              if (/^\d{1,2}:\d{2}$/.test(r)) {
-                el.value = r.length === 4 ? "0" + r : r;
-              } else {
-                el.value = "";
-              }
-            } else {
-              el.value = r;
-            }
-            break;
-          }
-        }
-      });
-
-      document.getElementById("message").innerText = "✅ XLSX cargado y formulario rellenado";
-    } catch (err) {
-      console.error(err);
-      document.getElementById("message").innerText = "❌ Error al cargar XLSX: " + (err?.message || err);
-    }
-  };
-}    
-// Guardar con File System Access (evita MOTW)
-    async function saveBlob(blob, filename){
-      if(window.showSaveFilePicker){
-        try{
-          const handle=await window.showSaveFilePicker({
-            suggestedName:filename,
-            types:[{description:'Archivo ZIP',accept:{'application/zip':['.zip']}}]
-          });
-          const writable=await handle.createWritable();
-          await writable.write(blob); await writable.close(); return;
-        }catch(e){console.warn('FSA fallback',e);}
-      }
-      const url=URL.createObjectURL(blob);
-      const a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);
-      a.click(); setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},1500);
-    }
-
-    // Generar ODT con reemplazos en MAYÚSCULAS
-    async function generarODTUint8(base64,dataUpper){
-      const bytes=Uint8Array.from(atob(base64.replace(/[\r\n\t ]+/g,"")),c=>c.charCodeAt(0));
-      const zip=await JSZip.loadAsync(bytes);
-      let xml=await zip.file("content.xml").async("string");
-
-      for(const k in dataUpper){
-        const v=(dataUpper[k]??"").toString();
-        xml = xml.replace(buildFlexibleRegex(k), v);
-        xml = xml.replace(new RegExp("\\{\\{\\s*"+escapeRegExp(k)+"\\s*\\}\\}","g"), v);
-      }
-      // Limpia cualquier resto {{...}}
-      xml = xml.replace(/{{\s*[^}]+\s*}}/g,"");
-
-      zip.file("content.xml",xml);
-      return await zip.generateAsync({type:"uint8array",compression:"DEFLATE"});
-    }
-
-    // Generar XLSX sin cabecera, dos columnas, ancho máx 40 chars, A derecha, B centrada, horas con formato h:mm
-    async function generarXLSXUint8(rows, sheetName="Resumen"){
-      const x = new JSZip();
-
-      const contentTypes =
-`<?xml version="1.0" encoding="UTF-8"?>
-<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
-  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
-  <Default Extension="xml" ContentType="application/xml"/>
-  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
-  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
-  <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
-  <Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
-  <Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>
-</Types>`;
-
-      const rels =
-`<?xml version="1.0" encoding="UTF-8"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
-  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>
-  <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>
-</Relationships>`;
-
-      const wb =
-`<?xml version="1.0" encoding="UTF-8"?>
-<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
- xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-  <bookViews><workbookView/></bookViews>
-  <sheets>
-    <sheet name="${xmlEscape(sheetName)}" sheetId="1" r:id="rId1"/>
-  </sheets>
-</workbook>`;
-
-      const wbRels =
-`<?xml version="1.0" encoding="UTF-8"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
-  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
-</Relationships>`;
-
-      // Estilos: 0 base, 1 preguntas (derecha), 2 respuestas (centro), 3 hora (centro + num)
-      const styles =
-`<?xml version="1.0" encoding="UTF-8"?>
-<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-  <numFmts count="1">
-    <numFmt numFmtId="165" formatCode="h:mm"/>
-  </numFmts>
-  <fonts count="1">
-    <font><sz val="11"/><color theme="1"/><name val="Calibri"/></font>
-  </fonts>
-  <fills count="1"><fill><patternFill patternType="none"/></fill></fills>
-  <borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>
-  <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
-  <cellXfs count="4">
-    <xf numFmtId="0" fontId="0" fillId="0" borderId="0" applyAlignment="1"><alignment wrapText="1" vertical="top"/></xf>
-    <xf numFmtId="0" fontId="0" fillId="0" borderId="0" applyAlignment="1"><alignment wrapText="1" vertical="top" horizontal="right"/></xf>
-    <xf numFmtId="0" fontId="0" fillId="0" borderId="0" applyAlignment="1"><alignment wrapText="1" vertical="center" horizontal="center"/></xf>
-    <xf numFmtId="165" fontId="0" fillId="0" borderId="0" applyNumberFormat="1" applyAlignment="1"><alignment vertical="center" horizontal="center"/></xf>
-  </cellXfs>
-  <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
-</styleSheet>`;
-
-      // Ancho máx 40 caracteres en ambas columnas
-      const cols = `<cols>
-        <col min="1" max="1" width="40" customWidth="1"/>
-        <col min="2" max="2" width="40" customWidth="1"/>
-      </cols>`;
-
-      // Utilidad para convertir "HH:MM" a fracción de día Excel
-      function parseTimeToExcelFraction(str){
-        const m = /^(\d{1,2}):(\d{2})$/.exec(str||"");
-        if(!m) return null;
-        const h = Math.min(23, parseInt(m[1],10));
-        const mm = Math.min(59, parseInt(m[2],10));
-        return (h/24) + (mm/1440);
-      }
-
-      function cellInline(r, cIdx, text, style){
-        const col = (cIdx===1?'A':'B');
-        const ref = col + r;
-        const s = (style!=null)?` s="${style}"`:'';
-        return `<c r="${ref}" t="inlineStr"${s}><is><t>${xmlEscape(text||'')}</t></is></c>`;
-      }
-      function cellNumber(r, cIdx, num, style){
-        const col = (cIdx===1?'A':'B');
-        const ref = col + r;
-        the_s = (style!=null)?` s="${style}"`:'';
-        return `<c r="${ref}"${the_s}><v>${num}</v></c>`;
-      }
-
-      let rowXml = '';
-      for(let i=0;i<rows.length;i++){
-        const r = i+1;
-        const pregunta = rows[i][0] ?? '';
-        const respuesta = rows[i][1] ?? '';
-
-        // Columna A: preguntas, DERECHA (style 1)
-        const a = cellInline(r,1,pregunta,1);
-
-        // Columna B: respuestas, CENTRO (style 2) o HORA (style 3)
-        let b;
-        if(pregunta==="Hora del hecho" || pregunta==="Hora de la detención"){
-          const frac = parseTimeToExcelFraction(respuesta);
-          if(frac!=null){ b = cellNumber(r,2,frac,3); } else { b = cellInline(r,2,respuesta,2); }
-        } else {
-          b = cellInline(r,2,respuesta,2);
-        }
-
-        rowXml += `<row r="${r}" spans="1:2">${a}${b}</row>`;
-      }
-
-      const sheet =
-`<?xml version="1.0" encoding="UTF-8"?>
-<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
- xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-  ${cols}
-  <sheetData>
-    ${rowXml}
-  </sheetData>
-  <sheetViews>
-    <sheetView tabSelected="1" workbookViewId="0"/>
-  </sheetViews>
-</worksheet>`;
-
-      const core =
-`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties"
- xmlns:dc="http://purl.org/dc/elements/1.1/"
- xmlns:dcterms="http://purl.org/dc/terms/"
- xmlns:dcmitype="http://purl.org/dcmitype/"
- xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-  <dc:title>Resumen Registro</dc:title>
-  <dc:subject>Registro de Detenidos</dc:subject>
-  <dc:creator>Formulario Registro</dc:creator>
-  <cp:lastModifiedBy>Formulario Registro</cp:lastModifiedBy>
-  <dcterms:created xsi:type="dcterms:W3CDTF">${new Date().toISOString()}</dcterms:created>
-  <dcterms:modified xsi:type="dcterms:W3CDTF">${new Date().toISOString()}</dcterms:modified>
-</cp:coreProperties>`;
-
-      const app =
-`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties"
- xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">
-  <Application>Formulario Registro</Application>
-  <DocSecurity>0</DocSecurity>
-  <ScaleCrop>false</ScaleCrop>
-  <Company></Company>
-  <LinksUpToDate>false</LinksUpToDate>
-  <SharedDoc>false</SharedDoc>
-  <HyperlinksChanged>false</HyperlinksChanged>
-  <AppVersion>16.0000</AppVersion>
-</Properties>`;
-
-      x.file('[Content_Types].xml', contentTypes);
-      x.folder('_rels').file('.rels', rels);
-      const xl = x.folder('xl');
-      xl.file('workbook.xml', wb);
-      xl.folder('_rels').file('workbook.xml.rels', wbRels);
-      xl.file('styles.xml', styles);
-      xl.folder('worksheets').file('sheet1.xml', sheet);
-      const props = x.folder('docProps');
-      props.file('core.xml', core);
-      props.file('app.xml', app);
-
-      return await x.generateAsync({type:'uint8array'});
-    }
-
-    async function generarZipUnicoSeguro(){
-      const msg=document.getElementById("message"); msg.innerText="Generando ZIP...";
-      try{
-        const form=document.getElementById("registroForm");
-        const fd=new FormData(form); const data={}; fd.forEach((v,k)=>data[k]=v);
-
-
-        // Normalizaciones previas
-        const optTD=data["TIPO DOCUMENTO_OPCION"];
-        data["TIPO DOCUMENTO"] = (optTD==="OTRO") ? (data["TIPO DOCUMENTO"]||"") : optTD;
-        if(optTD==="INDOCUMENTADO/A"){ data["NºDOCUMENTO"] = ""; } else { data["NºDOCUMENTO"] = data["NºDOCUMENTO"] || ""; }
-        data["SEXO"]=data["SEXO_OPCION"] || "";
-        data["INSTRUCTOR"] = data["INSTRUCTOR"] || "";
-	data["FECHA_GENERACION"] = document.getElementById('fechaGeneracion')?.value || '';
-
-	// 📌 Normalizar delitos elegidos en sub-globo
-let delitoTexto="";
-if (delitosElegidos.length===1){
-  delitoTexto=delitosElegidos[0];
-} else if (delitosElegidos.length===2){
-  delitoTexto=delitosElegidos[0]+" y "+delitosElegidos[1];
-} else if (delitosElegidos.length>2){
-  delitoTexto=delitosElegidos.slice(0,-1).join(", ")+" y "+delitosElegidos[delitosElegidos.length-1];
-}
-data["DELITO"]=delitoTexto;
-
-        const abOpt = data["ABOGADO_OPCION"];
-        if(abOpt==="DE OFICIO"){ data["ABOGADO"]="de oficio."; }
-        else if(abOpt==="OTRO"){ data["ABOGADO"]= (data["ABOGADO"]||""); }
-        else { data["ABOGADO"]= data["ABOGADO"] || ""; }
-
-        const ccOpt = data["COMUNICARSE CON_OPCION"];
-        if(ccOpt==="NADIE"){ data["COMUNICARSE CON:"]="nadie."; }
-        else if(ccOpt==="OTRO"){ data["COMUNICARSE CON:"]= (data["COMUNICARSE CON:"]||""); }
-        else { data["COMUNICARSE CON:"]= data["COMUNICARSE CON:"] || ""; }
-
-	const infOpt = data["INFORMAR DE SU DETENCION A:_OPCION"];
-        if(infOpt==="NADIE"){ data["INFORMAR DE SU DETENCION A:"]="nadie."; }
-        else if(infOpt==="OTRO"){ data["INFORMAR DE SU DETENCION A:"]= (data["INFORMAR DE SU DETENCION A:"]||""); }
-        else { data["INFORMAR DE SU DETENCION A:"]= data["INFORMAR DE SU DETENCION A:"] || ""; }
-
-
-        const intOpt = data["INTERPRETE_OPCION"] || "NO";
-let interpreteDisplay = "NO";
-
-if (intOpt === "OTRO") {
-  interpreteDisplay = data["IDIOMA"] || "";
-} else if (intOpt !== "NO") {
-  // Si es INGLÉS, ÁRABE, ITALIANO, RUSO...
-  interpreteDisplay = intOpt;
-
-// 🔑 Alias para ODT: soportar {{IDIOMA}} o {{INTERPRETE}}
-data["IDIOMA"] = interpreteDisplay;
-data["INTERPRETE"] = interpreteDisplay;
-
-}
-
-	const nomDisplay = (data["NOMBRE_PADRES_OPCION"]==="OTRO") ? (data["NOMBRE_PADRES"]||"") : (data["NOMBRE_PADRES_OPCION"]||"");
-        const domDisplay = (data["DOMICILIO_OPCION"]==="OTRO") ? (data["DOMICILIO"]||"") : (data["DOMICILIO_OPCION"]||"");
-        const telDisplay = (data["TELÉFONO_OPCION"]==="OTRO") ? (data["TELÉFONO"]||"") : (data["TELÉFONO_OPCION"]||"");
-
-        data["MEDICO"] = (data["MEDICO"]==="SI") ? "SI" : "NO";
-        data["CONSULADO"] = (data["CONSULADO"]==="SI") ? "SI" : "NO";
-
-        // Asegurar que en ODT también salga "NO APORTA" si es la opción por defecto
-	data["NOMBRE_PADRES"] = nomDisplay;
-	data["Nombre de los Padres"] = nomDisplay;
-        data["DOMICILIO"] = domDisplay;
-        data["TELÉFONO"] = telDisplay;
-
-        // Construir mapa en MAYÚSCULAS para ODT
-        const dataUpper = {};
-        for(const k in data){
-          dataUpper[k] = U(data[k]);
-        }
-const zip = new JSZip();
-        // 🔎 Construir nombre base para carpeta y archivos
-function removeDiacritics(s){
-  return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/ñ/gi,'n');
-}
-
-const diligPartRaw = String(data["DILIGENCIAS"] || '').replace(/\//g, '-').trim();
-const delitoPart   = String(data["DELITO"] || '').trim();
-const nombrePart   = String(data["Nombre"] || '').trim();
-const apellidosPart= String(data["APELLIDOS"] || '').trim();
-
-let combined = `${diligPartRaw} ${delitoPart} ${nombrePart} ${apellidosPart}`.trim()
-  .replace(/_/g,' ')
-  .replace(/\s+/g,' ');
-
-combined = removeDiacritics(combined).replace(/[^A-Za-z0-9 \-]/g,'').trim();
-
-const base = combined.toUpperCase() || "DOCUMENTO";
-
-// 📂 Crear carpeta interna del ZIP
-const folder = zip.folder(base);
-
-// 👮‍♂️ Calcular edad
-function calcularEdad(fechaStr){
-  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(fechaStr||"");
-  if(!m) return null;
-  const dia=parseInt(m[1],10), mes=parseInt(m[2],10)-1, anio=parseInt(m[3],10);
-  const nacimiento=new Date(anio, mes, dia), hoy=new Date();
-  let edad=hoy.getFullYear()-nacimiento.getFullYear();
-  const mDiff=hoy.getMonth()-nacimiento.getMonth();
-  if(mDiff<0 || (mDiff===0 && hoy.getDate()<nacimiento.getDate())) edad--;
-  return edad;
-}
-const edad = calcularEdad(data["FECHA DE NACIMIENTO"]);
-
-// 📄 Construir lista de documentos
-let docs = [
-  { key:"fax", name:`Fax.odt` },
-  { key:"derechos_espanol", name:`derechos_esp.odt` }
-];
-
-// Edad → amarillas/azules
-if (edad !== null) {
-  if (edad >= 18) docs.unshift({ key:"amarillas", name:`amarillas.odt` });
-  else docs.unshift({ key:"azules", name:`azules.odt` });
-} else {
-  docs.unshift({ key:"azules", name:`azules.odt` });
-  docs.unshift({ key:"amarillas", name:`amarillas.odt` });
-}
-
-// Intérprete → idioma adicional
-const idiomaSel = (intOpt || "").trim().toUpperCase();
-switch (idiomaSel) {
-  case "INGLÉS":
-    docs.push({ key:"derechos_ingles", name:`derechos_ing.odt` });
-    break;
-  case "ÁRABE":
-    docs.push({ key:"derechos_arabe", name:`derechos_arabe.odt` });
-    break;
-  case "ITALIANO":
-    docs.push({ key:"derechos_italiano", name:`derechos_ita.odt` });
-    break;
-  case "RUSO":
-    docs.push({ key:"derechos_ruso", name:`derechos_ruso.odt` });
-    break;
-  case "OTRO":
-    const idiomaOtro = (data["IDIOMA"]||"").trim().toLowerCase();
-    if (idiomaOtro) {
-      const keyCustom = `derechos_${idiomaOtro}`;
-      if (PLANTILLAS[keyCustom]) {
-        docs.push({ key:keyCustom, name:`${keyCustom}_${base}.odt` });
-      }
-    }
-    break;
-}
-
-// 📝 Generar ODTs dentro de la carpeta
-let ok=0;
-for(const d of docs){
-  if(!PLANTILLAS[d.key]) continue;
-  const odt=await generarODTUint8(PLANTILLAS[d.key],dataUpper);
-  folder.file(d.name, odt, {compression:"STORE"});
-  ok++;
-}
-
-// 🧾 Generar XLSX de resumen
-const hoy = new Date();
-const dd=String(hoy.getDate()).padStart(2,'0');
-const mm=String(hoy.getMonth()+1).padStart(2,'0');
-const yyyy=String(hoy.getFullYear());
-const fechaStr=`${dd}-${mm}-${yyyy}`;
-const excelName = `${sanitizeForFilename(data["Nombre"]||"")} ${sanitizeForFilename(data["APELLIDOS"]||"")} ${fechaStr}.xlsx`.trim();
-
-const filas = [
-  ["Nombre", U(data["Nombre"])],
-  ["Apellidos", U(data["APELLIDOS"])],
-  ["Tipo de documento", U(data["TIPO DOCUMENTO"])],
-  ["Nº Documento", U(data["NºDOCUMENTO"])],
-  ["Sexo", U(data["SEXO"])],
-  ["Nacionalidad", U(data["NACIONALIDAD"])],
-  ["Nombre de los Padres", U(data["Nombre de los Padres"])],
-  ["Fecha de nacimiento", U(data["FECHA DE NACIMIENTO"])],
-  ["Lugar de nacimiento", U(data["LUGAR DE NACIMIENTO"])],
-  ["Domicilio", U(domDisplay)],
-  ["Teléfono", U(telDisplay)],
-  ["Delito", U(data["DELITO"])],
-  ["C.P. Agentes", U(data["C.P. AGENTES"])],
-  ["Diligencias", U(data["DILIGENCIAS"])],
-  ["Instructor", U(data["INSTRUCTOR"])],
-  ["Lugar del hecho", U(data["LUGAR DEL HECHO"])],
-  ["Lugar de la detención", U(data["LUGAR DE LA DETENCIÓN"])],
-  ["Hora del hecho", (document.getElementById('horaHecho')?.value || data["HORA DEL HECHO"] || "").trim()],
-  ["Hora de la detención", (document.getElementById('horaDetencion')?.value || data["HORA DE LA DETENCIÓN"] || "").trim()],
-  ["Breve resumen de los hechos", U(data["BREVE RESUMEN DE LOS HECHOS"])],
-  ["Indicios por los que se detiene", U(data["INDICIOS POR LOS QUE SE DETIENE"])],
-  ["Abogado", U(data["ABOGADO"])],
-  ["Comunicarse con", U(data["COMUNICARSE CON:"])],
-  ["Informar de su detención a:", U(data["INFORMAR DE SU DETENCION A:"])],
-  ["Intérprete", U(interpreteDisplay)],
-  ["Médico", U(data["MEDICO"])],
-  ["Consulado", U(data["CONSULADO"])],
-  ["Indicativo", U(data["Indicativo"])],
-  ["Fecha de generación", U(data["FECHA_GENERACION"])]
-];
-
-const xlsx = await generarXLSXUint8(filas,"Resumen");
-folder.file(excelName || `resumen_${base}.xlsx`, xlsx, {compression:"STORE"});
-
-// 🎁 Guardar ZIP
-const blob=await zip.generateAsync({type:"blob",compression:"STORE"});
-await saveBlob(blob, `${base}.zip`);
-msg.innerText=`✅ ZIP generado (${ok} ODT + XLSX)`;
-      }catch(err){
-        console.error(err);
-        msg.innerText="❌ "+(err?.message||err);
-      }
-    }
-
+// Función para descargar solo Excel
 async function descargarSoloExcel() {
   const msg = document.getElementById("message");
   msg.innerText = "Generando Excel...";
 
+  try {
+    const { filas, excelName } = prepararDatosExcel();
+
+    const xlsx = await generarXLSXUint8(filas, "Resumen");
+
+    const blob = new Blob([xlsx], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = excelName || "resumen.xlsx";
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      URL.revokeObjectURL(a.href);
+      a.remove();
+    }, 1500);
+
+    msg.innerText = "✅ Excel generado y descargado";
+  } catch (err) {
+    console.error(err);
+    msg.innerText = "❌ Error al generar Excel: " + (err?.message || err);
+  }
+}
+
+// Función para generar ZIP con ODTs y Excel
+async function generarZipUnicoSeguro() {
+  const msg = document.getElementById("message");
+  msg.innerText = "Generando ZIP...";
   try {
     const form = document.getElementById("registroForm");
     const fd = new FormData(form);
     const data = {};
     fd.forEach((v, k) => data[k] = v);
 
-    // Normalizaciones previas (igual que en generarZipUnicoSeguro)
+    // Normalizaciones previas (igual que en prepararDatosExcel)
     const optTD = data["TIPO DOCUMENTO_OPCION"];
     data["TIPO DOCUMENTO"] = (optTD === "OTRO") ? (data["TIPO DOCUMENTO"] || "") : optTD;
     if (optTD === "INDOCUMENTADO/A") { data["NºDOCUMENTO"] = ""; } else { data["NºDOCUMENTO"] = data["NºDOCUMENTO"] || ""; }
@@ -966,6 +472,11 @@ async function descargarSoloExcel() {
     else if (ccOpt === "OTRO") { data["COMUNICARSE CON:"] = (data["COMUNICARSE CON:"] || ""); }
     else { data["COMUNICARSE CON:"] = data["COMUNICARSE CON:"] || ""; }
 
+    const infOpt = data["INFORMAR DE SU DETENCION A_OPCION"] || data["INFORMAR DE SU DETENCION A:"] || "";
+    if (infOpt === "NADIE") { data["INFORMAR DE SU DETENCION A:"] = "nadie."; }
+    else if (infOpt === "OTRO") { data["INFORMAR DE SU DETENCION A:"] = (data["INFORMAR DE SU DETENCION A:"] || ""); }
+    else { data["INFORMAR DE SU DETENCION A:"] = data["INFORMAR DE SU DETENCION A:"] || ""; }
+
     const intOpt = data["INTERPRETE_OPCION"] || "NO";
     let interpreteDisplay = "NO";
 
@@ -989,69 +500,110 @@ async function descargarSoloExcel() {
     data["DOMICILIO"] = domDisplay;
     data["TELÉFONO"] = telDisplay;
 
-    // Construir nombre archivo Excel
-    function sanitizeForFilename(s) {
-      return String(s || '').replace(/[\/\\:*?"<>|]+/g, ' ').trim();
+    // Construir mapa en MAYÚSCULAS para ODT
+    const dataUpper = {};
+    for (const k in data) {
+      dataUpper[k] = U(data[k]);
     }
-    const hoy = new Date();
-    const dd = String(hoy.getDate()).padStart(2, '0');
-    const mm = String(hoy.getMonth() + 1).padStart(2, '0');
-    const yyyy = String(hoy.getFullYear());
-    const fechaStr = `${dd}-${mm}-${yyyy}`;
-    const excelName = `${sanitizeForFilename(data["Nombre"] || "")} ${sanitizeForFilename(data["APELLIDOS"] || "")} ${fechaStr}.xlsx`.trim();
 
-    // Filas para Excel
-    const filas = [
-      ["Nombre", (data["Nombre"] || "").toUpperCase()],
-      ["Apellidos", (data["APELLIDOS"] || "").toUpperCase()],
-      ["Tipo de documento", (data["TIPO DOCUMENTO"] || "").toUpperCase()],
-      ["Nº Documento", (data["NºDOCUMENTO"] || "").toUpperCase()],
-      ["Sexo", (data["SEXO"] || "").toUpperCase()],
-      ["Nacionalidad", (data["NACIONALIDAD"] || "").toUpperCase()],
-      ["Nombre de los Padres", (data["Nombre de los Padres"] || "").toUpperCase()],
-      ["Fecha de nacimiento", (data["FECHA DE NACIMIENTO"] || "").toUpperCase()],
-      ["Lugar de nacimiento", (data["LUGAR DE NACIMIENTO"] || "").toUpperCase()],
-      ["Domicilio", (domDisplay || "").toUpperCase()],
-      ["Teléfono", (telDisplay || "").toUpperCase()],
-      ["Delito", (data["DELITO"] || "").toUpperCase()],
-      ["C.P. Agentes", (data["C.P. AGENTES"] || "").toUpperCase()],
-      ["Diligencias", (data["DILIGENCIAS"] || "").toUpperCase()],
-      ["Instructor", (data["INSTRUCTOR"] || "").toUpperCase()],
-      ["Lugar del hecho", (data["LUGAR DEL HECHO"] || "").toUpperCase()],
-      ["Lugar de la detención", (data["LUGAR DE LA DETENCIÓN"] || "").toUpperCase()],
-      ["Hora del hecho", (document.getElementById('horaHecho')?.value || data["HORA DEL HECHO"] || "").trim()],
-      ["Hora de la detención", (document.getElementById('horaDetencion')?.value || data["HORA DE LA DETENCIÓN"] || "").trim()],
-      ["Breve resumen de los hechos", (data["BREVE RESUMEN DE LOS HECHOS"] || "").toUpperCase()],
-      ["Indicios por los que se detiene", (data["INDICIOS POR LOS QUE SE DETIENE"] || "").toUpperCase()],
-      ["Abogado", (data["ABOGADO"] || "").toUpperCase()],
-      ["Comunicarse con", (data["COMUNICARSE CON:"] || "").toUpperCase()],
-      ["Informar de su detención a:", (data["INFORMAR DE SU DETENCION A:"] || "").toUpperCase()],
-      ["Intérprete", (interpreteDisplay || "").toUpperCase()],
-      ["Médico", (data["MEDICO"] || "").toUpperCase()],
-      ["Consulado", (data["CONSULADO"] || "").toUpperCase()],
-      ["Indicativo", (data["Indicativo"] || "").toUpperCase()],
-      ["Fecha de generación", (data["FECHA_GENERACION"] || "").toUpperCase()]
+    const zip = new JSZip();
+
+    // Construir nombre base para carpeta y archivos
+    function removeDiacritics(s) {
+      return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ñ/gi, 'n');
+    }
+
+    const diligPartRaw = String(data["DILIGENCIAS"] || '').replace(/\//g, '-').trim();
+    const delitoPart = String(data["DELITO"] || '').trim();
+    const nombrePart = String(data["Nombre"] || '').trim();
+    const apellidosPart = String(data["APELLIDOS"] || '').trim();
+
+    let combined = `${diligPartRaw} ${delitoPart} ${nombrePart} ${apellidosPart}`.trim()
+      .replace(/_/g, ' ')
+      .replace(/\s+/g, ' ');
+
+    combined = removeDiacritics(combined).replace(/[^A-Za-z0-9 \-]/g, '').trim();
+
+    const base = combined.toUpperCase() || "DOCUMENTO";
+
+    // Crear carpeta interna del ZIP
+    const folder = zip.folder(base);
+
+    // Calcular edad
+    function calcularEdad(fechaStr) {
+      const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(fechaStr || "");
+      if (!m) return null;
+      const dia = parseInt(m[1], 10), mes = parseInt(m[2], 10) - 1, anio = parseInt(m[3], 10);
+      const nacimiento = new Date(anio, mes, dia), hoy = new Date();
+      let edad = hoy.getFullYear() - nacimiento.getFullYear();
+      const mDiff = hoy.getMonth() - nacimiento.getMonth();
+      if (mDiff < 0 || (mDiff === 0 && hoy.getDate() < nacimiento.getDate())) edad--;
+      return edad;
+    }
+    const edad = calcularEdad(data["FECHA DE NACIMIENTO"]);
+
+    // Construir lista de documentos ODT
+    let docs = [
+      { key: "fax", name: `Fax.odt` },
+      { key: "derechos_espanol", name: `derechos_esp.odt` }
     ];
 
-    // Usar función existente para generar XLSX
+    // Edad → amarillas/azules
+    if (edad !== null) {
+      if (edad >= 18) docs.unshift({ key: "amarillas", name: `amarillas.odt` });
+      else docs.unshift({ key: "azules", name: `azules.odt` });
+    } else {
+      docs.unshift({ key: "azules", name: `azules.odt` });
+      docs.unshift({ key: "amarillas", name: `amarillas.odt` });
+    }
+
+    // Intérprete → idioma adicional
+    const idiomaSel = (intOpt || "").trim().toUpperCase();
+    switch (idiomaSel) {
+      case "INGLÉS":
+        docs.push({ key: "derechos_ingles", name: `derechos_ing.odt` });
+        break;
+      case "ÁRABE":
+        docs.push({ key: "derechos_arabe", name: `derechos_arabe.odt` });
+        break;
+      case "ITALIANO":
+        docs.push({ key: "derechos_italiano", name: `derechos_ita.odt` });
+        break;
+      case "RUSO":
+        docs.push({ key: "derechos_ruso", name: `derechos_ruso.odt` });
+        break;
+      case "OTRO":
+        const idiomaOtro = (data["IDIOMA"] || "").trim().toLowerCase();
+        if (idiomaOtro) {
+          const keyCustom = `derechos_${idiomaOtro}`;
+          if (PLANTILLAS[keyCustom]) {
+            docs.push({ key: keyCustom, name: `${keyCustom}_${base}.odt` });
+          }
+        }
+        break;
+    }
+
+    // Generar ODTs dentro de la carpeta
+    let ok = 0;
+    for (const d of docs) {
+      if (!PLANTILLAS[d.key]) continue;
+      const odt = await generarODTUint8(PLANTILLAS[d.key], dataUpper);
+      folder.file(d.name, odt, { compression: "STORE" });
+      ok++;
+    }
+
+    // Generar XLSX de resumen usando función común
+    const { filas, excelName } = prepararDatosExcel();
     const xlsx = await generarXLSXUint8(filas, "Resumen");
+    folder.file(excelName || `resumen_${base}.xlsx`, xlsx, { compression: "STORE" });
 
-    // Descargar archivo XLSX
-    const blob = new Blob([xlsx], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = excelName || "resumen.xlsx";
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => {
-      URL.revokeObjectURL(a.href);
-      a.remove();
-    }, 1500);
-
-    msg.innerText = "✅ Excel generado y descargado";
+    // Guardar ZIP
+    const blob = await zip.generateAsync({ type: "blob", compression: "STORE" });
+    await saveBlob(blob, `${base}.zip`);
+    msg.innerText = `✅ ZIP generado (${ok} ODT + XLSX)`;
   } catch (err) {
     console.error(err);
-    msg.innerText = "❌ Error al generar Excel: " + (err?.message || err);
+    msg.innerText = "❌ " + (err?.message || err);
   }
 }
 	  
@@ -1072,3 +624,4 @@ document.addEventListener("DOMContentLoaded", function () {
 </script>
 </body>
 </html>
+
