@@ -820,7 +820,8 @@ data["INTERPRETE"] = interpreteDisplay;
 	const nomDisplay = (data["NOMBRE_PADRES_OPCION"]==="OTRO") ? (data["NOMBRE_PADRES"]||"") : (data["NOMBRE_PADRES_OPCION"]||"");
         const domDisplay = (data["DOMICILIO_OPCION"]==="OTRO") ? (data["DOMICILIO"]||"") : (data["DOMICILIO_OPCION"]||"");
         const telDisplay = (data["TELÉFONO_OPCION"]==="OTRO") ? (data["TELÉFONO"]||"") : (data["TELÉFONO_OPCION"]||"");
-
+        data["DOMICILIO"] = domDisplay;
+        data["TELÉFONO"]  = telDisplay;
         data["MEDICO"] = (data["MEDICO"]==="SI") ? "SI" : "NO";
         data["CONSULADO"] = (data["CONSULADO"]==="SI") ? "SI" : "NO";
 
@@ -1094,6 +1095,7 @@ document.addEventListener("DOMContentLoaded", function () {
 </body>
 
 </html>
+
 
 
 
