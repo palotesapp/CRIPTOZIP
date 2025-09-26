@@ -170,12 +170,24 @@ h1 {
 select {
   text-align-last: center; /* centra el valor seleccionado */
 }
+.titulo-img {
+  text-align: center;       /* Centra horizontalmente */
+  margin: 16px 0 20px;      /* Igual que antes */
+}
 
+.titulo-img img {
+  max-width: 100%;          /* Escala en pantallas pequeñas */
+  height: auto;             /* Mantiene proporción */
+  display: inline-block;    /* Centrado correcto */
+  filter: drop-shadow(2px 2px 8px rgba(0,0,0,0.7)); /* imita el text-shadow */
+}
 </style>
 
 </head>
 <body>
-	<h1>Registro de Detenidos</h1>
+	<h1 class="titulo-img">
+  <img src="titulo.png" alt="Registro de Detenidos">
+</h1>
 
 <img src="emblema-esposas.png" alt="Escudo con esposas" class="logo-emblema">
 
@@ -1033,6 +1045,7 @@ document.addEventListener("DOMContentLoaded", function () {
 </body>
 
 </html>
+
 
 
 
