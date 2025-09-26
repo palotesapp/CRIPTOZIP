@@ -38,7 +38,7 @@
   body{margin:0;padding:0;font-family:Segoe UI,Roboto,Arial,sans-serif;background:url('fondo.jpg') no-repeat center center fixed;background-size:cover;min-height:100vh;display:flex;flex-direction:column;justify-content:center;}
   h1{text-align:center;margin:16px 0 10px;font-size:32px;font-weight:800;color:#fff;text-transform:uppercase;text-shadow:2px 2px 8px rgba(0,0,0,.7);}
   form{background:var(--panel);color:var(--text);border-radius:var(--radius);max-width:1400px;margin:0 auto 32px;padding:5px 32px;box-shadow:0 10px 28px rgba(0,0,0,.6);}
-  h2{font-size:20px;text-transform:uppercase;margin-top:28px;margin-bottom:12px;border-bottom:2px solid var(--primary);padding-bottom:6px;letter-spacing:.5px;}
+  h2{font-size:20px;text-transform:uppercase;margin-top:14px;margin-bottom:12px;border-bottom:2px solid var(--primary);padding-bottom:6px;letter-spacing:.5px;}
   .grid-rows{display:grid;grid-gap:var(--space);grid-template-columns: repeat(3, minmax(280px,1fr));}
   @media(max-width:1200px){.grid-rows{grid-template-columns:repeat(2,minmax(280px,1fr));}}
   @media(max-width:700px){.grid-rows{grid-template-columns:1fr;}}
@@ -115,13 +115,13 @@ h1 {
   /* Botones colores específicos */
  /* Colores */
 .actions .zip {
-  background-color: darkblue;      /* Botón ZIP en azul oscuro */
+  background-color: darkblue; width:50%; text-align: center;     /* Botón ZIP en azul oscuro */
 }
 .actions .xlsx {
-  background-color: #006400;   /* Botón XLSX en verde */
+  background-color: #006400; width:50%; text-align: center;  /* Botón XLSX en verde */
 }
 .actions .refresh {
-  background-color: #1E90FF;   /* Botón refrescar en azul */
+  background-color: #1E90FF; width:50%; text-align: center;  /* Botón refrescar en azul */
 }
 
   #delitoOtroTexto::placeholder {
@@ -1036,6 +1036,7 @@ document.addEventListener("DOMContentLoaded", function () {
 </body>
 
 </html>
+
 
 
 
